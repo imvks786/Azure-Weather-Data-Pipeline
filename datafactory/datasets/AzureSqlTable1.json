@@ -1,0 +1,48 @@
+{
+    "name": "AzureSqlTable1",
+    "properties": {
+        "linkedServiceName": {
+            "referenceName": "AzureSqlDatabase1",
+            "type": "LinkedServiceReference"
+        },
+        "annotations": [],
+        "type": "AzureSqlTable",
+        "schema": [
+            {
+                "name": "Id",
+                "type": "int",
+                "precision": 10
+            },
+            {
+                "name": "City",
+                "type": "nvarchar"
+            },
+            {
+                "name": "Temperature",
+                "type": "float",
+                "precision": 15
+            },
+            {
+                "name": "Humidity",
+                "type": "int",
+                "precision": 10
+            },
+            {
+                "name": "Pressure",
+                "type": "int",
+                "precision": 10
+            },
+            {
+                "name": "RecordedAt",
+                "type": "datetime",
+                "precision": 23,
+                "scale": 3
+            }
+        ],
+        "typeProperties": {
+            "schema": "dbo",
+            "table": "WeatherData"
+        }
+    },
+    "type": "Microsoft.DataFactory/factories/datasets"
+}

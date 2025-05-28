@@ -1,0 +1,29 @@
+{
+    "name": "API_TO_AZ_DATALKE",
+    "properties": {
+        "linkedServiceName": {
+            "referenceName": "SourceAZDataLake",
+            "type": "LinkedServiceReference"
+        },
+        "parameters": {
+            "city_name": {
+                "type": "string"
+            }
+        },
+        "annotations": [],
+        "type": "Json",
+        "typeProperties": {
+            "location": {
+                "type": "AzureBlobFSLocation",
+                "fileName": {
+                    "value": "@{dataset().city_name}.json",
+                    "type": "Expression"
+                },
+                "folderPath": "bronze",
+                "fileSystem": "weather"
+            }
+        },
+        "schema": {}
+    },
+    "type": "Microsoft.DataFactory/factories/datasets"
+}

@@ -1,0 +1,27 @@
+{
+    "name": "HTTP_REQ_API",
+    "properties": {
+        "linkedServiceName": {
+            "referenceName": "HTTP_REQ",
+            "type": "LinkedServiceReference"
+        },
+        "parameters": {
+            "city_name": {
+                "type": "string"
+            }
+        },
+        "annotations": [],
+        "type": "Json",
+        "typeProperties": {
+            "location": {
+                "type": "HttpServerLocation",
+                "relativeUrl": {
+                    "value": "data/2.5/forecast?q=@{dataset().city_name}&APPID=3dbbfca50d3674cc4510970916791fb0",
+                    "type": "Expression"
+                }
+            }
+        },
+        "schema": {}
+    },
+    "type": "Microsoft.DataFactory/factories/datasets"
+}

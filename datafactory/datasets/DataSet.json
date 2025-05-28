@@ -1,0 +1,181 @@
+{
+    "name": "DataSet",
+    "properties": {
+        "linkedServiceName": {
+            "referenceName": "SourceAZDataLake",
+            "type": "LinkedServiceReference"
+        },
+        "parameters": {
+            "city": {
+                "type": "string"
+            }
+        },
+        "annotations": [],
+        "type": "Json",
+        "typeProperties": {
+            "location": {
+                "type": "AzureBlobFSLocation",
+                "fileName": {
+                    "value": "@{dataset().city}.json",
+                    "type": "Expression"
+                },
+                "folderPath": "bronze",
+                "fileSystem": "weather"
+            }
+        },
+        "schema": {
+            "type": "object",
+            "properties": {
+                "cod": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "integer"
+                },
+                "cnt": {
+                    "type": "integer"
+                },
+                "list": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "dt": {
+                                "type": "integer"
+                            },
+                            "main": {
+                                "type": "object",
+                                "properties": {
+                                    "temp": {
+                                        "type": "number"
+                                    },
+                                    "feels_like": {
+                                        "type": "number"
+                                    },
+                                    "temp_min": {
+                                        "type": "number"
+                                    },
+                                    "temp_max": {
+                                        "type": "number"
+                                    },
+                                    "pressure": {
+                                        "type": "integer"
+                                    },
+                                    "sea_level": {
+                                        "type": "integer"
+                                    },
+                                    "grnd_level": {
+                                        "type": "integer"
+                                    },
+                                    "humidity": {
+                                        "type": "integer"
+                                    },
+                                    "temp_kf": {
+                                        "type": "number"
+                                    }
+                                }
+                            },
+                            "weather": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer"
+                                        },
+                                        "main": {
+                                            "type": "string"
+                                        },
+                                        "description": {
+                                            "type": "string"
+                                        },
+                                        "icon": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "clouds": {
+                                "type": "object",
+                                "properties": {
+                                    "all": {
+                                        "type": "integer"
+                                    }
+                                }
+                            },
+                            "wind": {
+                                "type": "object",
+                                "properties": {
+                                    "speed": {
+                                        "type": "number"
+                                    },
+                                    "deg": {
+                                        "type": "integer"
+                                    },
+                                    "gust": {
+                                        "type": "number"
+                                    }
+                                }
+                            },
+                            "visibility": {
+                                "type": "integer"
+                            },
+                            "pop": {
+                                "type": "integer"
+                            },
+                            "sys": {
+                                "type": "object",
+                                "properties": {
+                                    "pod": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "dt_txt": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "city": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "integer"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "coord": {
+                            "type": "object",
+                            "properties": {
+                                "lat": {
+                                    "type": "number"
+                                },
+                                "lon": {
+                                    "type": "number"
+                                }
+                            }
+                        },
+                        "country": {
+                            "type": "string"
+                        },
+                        "population": {
+                            "type": "integer"
+                        },
+                        "timezone": {
+                            "type": "integer"
+                        },
+                        "sunrise": {
+                            "type": "integer"
+                        },
+                        "sunset": {
+                            "type": "integer"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "type": "Microsoft.DataFactory/factories/datasets"
+}

@@ -1,0 +1,27 @@
+{
+    "name": "FileSearch",
+    "properties": {
+        "linkedServiceName": {
+            "referenceName": "SourceAZDataLake",
+            "type": "LinkedServiceReference"
+        },
+        "annotations": [],
+        "type": "Json",
+        "typeProperties": {
+            "location": {
+                "type": "AzureBlobFSLocation",
+                "fileName": "cities.json",
+                "fileSystem": "weather"
+            }
+        },
+        "schema": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "type": "Microsoft.DataFactory/factories/datasets"
+}

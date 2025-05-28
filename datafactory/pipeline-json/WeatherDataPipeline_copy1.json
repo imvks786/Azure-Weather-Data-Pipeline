@@ -1,0 +1,226 @@
+{
+    "name": "WeatherDataPipeline_copy1",
+    "properties": {
+        "activities": [
+            {
+                "name": "Send Mail if success pipeline",
+                "type": "WebActivity",
+                "dependsOn": [
+                    {
+                        "activity": "ForEachCity",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "method": "POST",
+                    "url": "https://<YOUR_GENERATED_URL>/triggers/When_a_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_a_HTTP_request_is_received%2Frun&sv=1.0&sig=yKJa7hjDLCRo6wRSEfyHSeE_5O47aVYOjQ7T19V9T7Q",
+                    "body": {
+                        "subject": "Weather Pipeline Status Update",
+                        "body": "<b>Data Factory Name:</b> @{pipeline().DataFactory}<br><b>Run ID:</b> @{pipeline().RunId}<br><b>Time:</b> @{utcnow()}",
+                        "to": "example@example.com",
+                        "status": "success"
+                    }
+                }
+            },
+            {
+                "name": "Send Mail for Failed pipeline",
+                "type": "WebActivity",
+                "dependsOn": [
+                    {
+                        "activity": "ForEachCity",
+                        "dependencyConditions": [
+                            "Failed"
+                        ]
+                    },
+                    {
+                        "activity": "SearchFile",
+                        "dependencyConditions": [
+                            "Failed"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "method": "POST",
+                    "url": "https://<YOUR_GENERATED_URL>/triggers/When_a_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_a_HTTP_request_is_received%2Frun&sv=1.0&sig=yKJa7hjDLCRo6wRSEfyHSeE_5O47aVYOjQ7T19V9T7Q",
+                    "body": {
+                        "value": "{\n\"subject\" :  \"Weather Pipeline Status Update\",\n\"body\" :  \"<b>Data Factory Name:</b> @{pipeline().DataFactory}<br><b>Run ID:</b> @{pipeline().RunId}<br><b>Time:</b> @{utcNow()}\" ,\n\"to\" : \"email@example.com\",\n\"status\" : \"success\"\n}",
+                        "type": "Expression"
+                    }
+                }
+            },
+            {
+                "name": "SearchFile",
+                "type": "Lookup",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "JsonSource",
+                        "storeSettings": {
+                            "type": "AzureBlobFSReadSettings",
+                            "recursive": true,
+                            "enablePartitionDiscovery": false
+                        },
+                        "formatSettings": {
+                            "type": "JsonReadSettings"
+                        }
+                    },
+                    "dataset": {
+                        "referenceName": "FileSearch",
+                        "type": "DatasetReference"
+                    },
+                    "firstRowOnly": false
+                }
+            },
+            {
+                "name": "ForEachCity",
+                "type": "ForEach",
+                "dependsOn": [
+                    {
+                        "activity": "SearchFile",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "userProperties": [],
+                "typeProperties": {
+                    "items": {
+                        "value": "@activity('SearchFile').output.value",
+                        "type": "Expression"
+                    },
+                    "isSequential": false,
+                    "activities": [
+                        {
+                            "name": "GetDataFromAPI",
+                            "description": "Get data from api and store in json file in azure datalake",
+                            "type": "Copy",
+                            "dependsOn": [],
+                            "policy": {
+                                "timeout": "0.12:00:00",
+                                "retry": 3,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "source": {
+                                    "type": "JsonSource",
+                                    "storeSettings": {
+                                        "type": "HttpReadSettings",
+                                        "requestMethod": "GET"
+                                    },
+                                    "formatSettings": {
+                                        "type": "JsonReadSettings"
+                                    }
+                                },
+                                "sink": {
+                                    "type": "JsonSink",
+                                    "storeSettings": {
+                                        "type": "AzureBlobFSWriteSettings"
+                                    },
+                                    "formatSettings": {
+                                        "type": "JsonWriteSettings"
+                                    }
+                                },
+                                "enableStaging": false
+                            },
+                            "inputs": [
+                                {
+                                    "referenceName": "HTTP_REQ_API",
+                                    "type": "DatasetReference",
+                                    "parameters": {
+                                        "city_name": {
+                                            "value": "@item().city",
+                                            "type": "Expression"
+                                        }
+                                    }
+                                }
+                            ],
+                            "outputs": [
+                                {
+                                    "referenceName": "API_TO_AZ_DATALKE",
+                                    "type": "DatasetReference",
+                                    "parameters": {
+                                        "city_name": {
+                                            "value": "@item().city",
+                                            "type": "Expression"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Data Transformation",
+                            "type": "ExecuteDataFlow",
+                            "dependsOn": [
+                                {
+                                    "activity": "GetDataFromAPI",
+                                    "dependencyConditions": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            ],
+                            "policy": {
+                                "timeout": "0.12:00:00",
+                                "retry": 0,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "dataflow": {
+                                    "referenceName": "DataTransformation",
+                                    "type": "DataFlowReference",
+                                    "datasetParameters": {
+                                        "FileSource": {
+                                            "city": {
+                                                "value": "@item().city",
+                                                "type": "Expression"
+                                            }
+                                        }
+                                    }
+                                },
+                                "compute": {
+                                    "coreCount": 8,
+                                    "computeType": "General"
+                                },
+                                "traceLevel": "Fine"
+                            }
+                        }
+                    ]
+                }
+            }
+        ],
+        "annotations": [],
+        "lastPublishTime": "2025-05-28T17:58:34Z"
+    },
+    "type": "Microsoft.DataFactory/factories/pipelines"
+}
