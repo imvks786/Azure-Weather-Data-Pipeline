@@ -1,1 +1,72 @@
-
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "contentVersion": "1.0.0.0",
+        "triggers": {
+            "When_a_HTTP_request_is_received": {
+                "type": "Request",
+                "kind": "Http",
+                "inputs": {
+                    "method": "POST",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "body": {
+                                "type": "string"
+                            },
+                            "subject": {
+                                "type": "string"
+                            },
+                            "to": {
+                                "type": "string"
+                            },
+                            "status": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "actions": {
+            "Send_email_(V2)": {
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['gmail']['connectionId']"
+                        }
+                    },
+                    "method": "post",
+                    "body": {
+                        "To": "example@gmail.com",
+                        "Importance": "High",
+                        "Subject": "@triggerBody()?['subject']",
+                        "Body": "\n  \n    <h2>🌤️ Weather Data Pipeline Status</h2>\n\n    <p>Hi,</p>\n    <p>Today's pipeline workflow ran with the following result:</p>\n\n    <table style=\"border-collapse: collapse; width: 100%; max-width: 600px;\">\n      <tbody><tr>\n        <td style=\"font-weight: bold;\">Status:</td>\n        <td>\n          <span style=\"font-weight: bold;\n            color: \n              @{if(equals(triggerBody()['status'], 'success'), '#2e7d32',\n              if(equals(triggerBody()['status'], 'failed'), '#c62828', '#f9a825'))};\">\n            @{triggerBody()['status']}\n          </span>\n        </td>\n      </tr>\n    </tbody></table>\n\n    <p>📬 <strong>Summary:</strong><br>\n    @{triggerBody()['body']}</p>\n\n    <br>\n    <p>Best regards,<br>\n    <strong>Azure Developer Team</strong></p>\n  \n\n"
+                    },
+                    "path": "/v2/Mail"
+                },
+                "runAfter": {}
+            }
+        },
+        "outputs": {},
+        "parameters": {
+            "$connections": {
+                "type": "Object",
+                "defaultValue": {}
+            }
+        }
+    },
+    "parameters": {
+        "$connections": {
+            "type": "Object",
+            "value": {
+                "gmail": {
+                    "id": "/subscriptions/<SUB_ID>/providers/Microsoft.Web/locations/southeastasia/managedApis/gmail",
+                    "connectionId": "/subscriptions/<SUB_ID>/resourceGroups/LogicApp/providers/Microsoft.Web/connections/gmail",
+                    "connectionName": "gmail"
+                }
+            }
+        }
+    }
+}
