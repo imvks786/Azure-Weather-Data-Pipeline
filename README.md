@@ -17,3 +17,16 @@ A fully automated Azure Data Factory pipeline to ingest, transform, and store we
 - Loaded cleansed and enriched data into Azure SQL Database for downstream analytics and reporting.
 - Integrated Azure Logic Apps to send success/failure notifications via email, enhancing observability and alerting.
 - Followed best practices including parameterization, error handling, logging, and modular design for pipeline reusability and scalability.
+
+# Technologies Used
+- **Azure Data Factory**
+- **Azure Data Lake Storage Gen2**
+- **Azure SQL Database**
+- **Azure Logic Apps**
+- **REST APIs**
+- **JSON / SQL**
+
+# 👨‍💻 Author
+
+**Vivek**
+🛠️ Software Developer | ☁️ Azure Enthusiast | 💙 Simplicity Lover
