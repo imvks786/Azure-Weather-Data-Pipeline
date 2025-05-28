@@ -1,1 +1,534 @@
-
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "factoryName": { "type": "string", "metadata": "Data Factory name" },
+    "SourceAZDataLake": { "type": "string" },
+    "HTTP_REQ": { "type": "string" },
+    "AzureSqlDatabase1": { "type": "string" }
+  },
+  "variables": {
+    "factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+  },
+  "resources": [
+    {
+      "name": "[concat(parameters('factoryName'), '/WeatherDataPipeline_copy1')]",
+      "type": "Microsoft.DataFactory/factories/pipelines",
+      "apiVersion": "2018-06-01",
+      "properties": {
+        "activities": [
+          {
+            "name": "Send Mail if success pipeline",
+            "type": "WebActivity",
+            "dependsOn": [
+              {
+                "activity": "ForEachCity",
+                "dependencyConditions": ["Succeeded"]
+              }
+            ],
+            "policy": {
+              "timeout": "0.12:00:00",
+              "retry": 0,
+              "retryIntervalInSeconds": 30,
+              "secureOutput": false,
+              "secureInput": false
+            },
+            "userProperties": [],
+            "typeProperties": {
+              "method": "POST",
+              "headers": {},
+              "url": "",
+              "body": {
+                "subject": "Weather Pipeline Status Update",
+                "body": "<b>Data Factory Name:</b> @{pipeline().DataFactory}<br><b>Run ID:</b> @{pipeline().RunId}<br><b>Time:</b> @{utcnow()}",
+                "to": "viveksingh9891285537gmail.com",
+                "status": "success"
+              }
+            }
+          },
+          {
+            "name": "Send Mail for Failed pipeline",
+            "type": "WebActivity",
+            "dependsOn": [
+              { "activity": "ForEachCity", "dependencyConditions": ["Failed"] },
+              { "activity": "SearchFile", "dependencyConditions": ["Failed"] }
+            ],
+            "policy": {
+              "timeout": "0.12:00:00",
+              "retry": 0,
+              "retryIntervalInSeconds": 30,
+              "secureOutput": false,
+              "secureInput": false
+            },
+            "userProperties": [],
+            "typeProperties": {
+              "method": "POST",
+              "headers": {},
+              "url": "",
+              "body": {
+                "value": "{\n\"subject\" :  \"Weather Pipeline Status Update\",\n\"body\" :  \"<b>Data Factory Name:</b> @{pipeline().DataFactory}<br><b>Run ID:</b> @{pipeline().RunId}<br><b>Time:</b> @{utcNow()}\" ,\n\"to\" : \"viveksingh9891285537gmail.com\",\n\"status\" : \"success\"\n}",
+                "type": "Expression"
+              }
+            }
+          },
+          {
+            "name": "SearchFile",
+            "type": "Lookup",
+            "dependsOn": [],
+            "policy": {
+              "timeout": "0.12:00:00",
+              "retry": 0,
+              "retryIntervalInSeconds": 30,
+              "secureOutput": false,
+              "secureInput": false
+            },
+            "userProperties": [],
+            "typeProperties": {
+              "source": {
+                "type": "JsonSource",
+                "storeSettings": {
+                  "type": "AzureBlobFSReadSettings",
+                  "recursive": true,
+                  "enablePartitionDiscovery": false
+                },
+                "formatSettings": { "type": "JsonReadSettings" }
+              },
+              "dataset": {
+                "referenceName": "FileSearch",
+                "type": "DatasetReference",
+                "parameters": {}
+              },
+              "firstRowOnly": false
+            }
+          },
+          {
+            "name": "ForEachCity",
+            "type": "ForEach",
+            "dependsOn": [
+              {
+                "activity": "SearchFile",
+                "dependencyConditions": ["Succeeded"]
+              }
+            ],
+            "userProperties": [],
+            "typeProperties": {
+              "items": {
+                "value": "@activity('SearchFile').output.value",
+                "type": "Expression"
+              },
+              "isSequential": false,
+              "activities": [
+                {
+                  "name": "GetDataFromAPI",
+                  "description": "Get data from api and store in json file in azure datalake",
+                  "type": "Copy",
+                  "dependsOn": [],
+                  "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 3,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                  },
+                  "userProperties": [],
+                  "typeProperties": {
+                    "source": {
+                      "type": "JsonSource",
+                      "storeSettings": {
+                        "type": "HttpReadSettings",
+                        "requestMethod": "GET"
+                      },
+                      "formatSettings": { "type": "JsonReadSettings" }
+                    },
+                    "sink": {
+                      "type": "JsonSink",
+                      "storeSettings": { "type": "AzureBlobFSWriteSettings" },
+                      "formatSettings": { "type": "JsonWriteSettings" }
+                    },
+                    "enableStaging": false
+                  },
+                  "inputs": [
+                    {
+                      "referenceName": "HTTP_REQ_API",
+                      "type": "DatasetReference",
+                      "parameters": {
+                        "city_name": {
+                          "value": "@item().city",
+                          "type": "Expression"
+                        }
+                      }
+                    }
+                  ],
+                  "outputs": [
+                    {
+                      "referenceName": "API_TO_AZ_DATALKE",
+                      "type": "DatasetReference",
+                      "parameters": {
+                        "city_name": {
+                          "value": "@item().city",
+                          "type": "Expression"
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Data Transformation",
+                  "type": "ExecuteDataFlow",
+                  "dependsOn": [
+                    {
+                      "activity": "GetDataFromAPI",
+                      "dependencyConditions": ["Succeeded"]
+                    }
+                  ],
+                  "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                  },
+                  "userProperties": [],
+                  "typeProperties": {
+                    "dataflow": {
+                      "referenceName": "DataTransformation",
+                      "type": "DataFlowReference",
+                      "parameters": {},
+                      "datasetParameters": {
+                        "FileSource": {
+                          "city": {
+                            "value": "@item().city",
+                            "type": "Expression"
+                          }
+                        },
+                        "StoreInDB": {}
+                      }
+                    },
+                    "staging": {},
+                    "compute": { "coreCount": 8, "computeType": "General" },
+                    "traceLevel": "Fine"
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "policy": { "elapsedTimeMetric": {} },
+        "annotations": [],
+        "lastPublishTime": "2025-05-28T17:58:34Z"
+      },
+      "dependsOn": [
+        "[concat(variables('factoryId'), '/datasets/FileSearch')]",
+        "[concat(variables('factoryId'), '/datasets/HTTP_REQ_API')]",
+        "[concat(variables('factoryId'), '/datasets/API_TO_AZ_DATALKE')]",
+        "[concat(variables('factoryId'), '/dataflows/DataTransformation')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('factoryName'), '/FileSearch')]",
+      "type": "Microsoft.DataFactory/factories/datasets",
+      "apiVersion": "2018-06-01",
+      "properties": {
+        "linkedServiceName": {
+          "referenceName": "[parameters('SourceAZDataLake')]",
+          "type": "LinkedServiceReference"
+        },
+        "annotations": [],
+        "type": "Json",
+        "typeProperties": {
+          "location": {
+            "type": "AzureBlobFSLocation",
+            "fileName": "cities.json",
+            "fileSystem": "weather"
+          }
+        },
+        "schema": {
+          "type": "object",
+          "properties": { "city": { "type": "string" } }
+        }
+      },
+      "dependsOn": []
+    },
+    {
+      "name": "[concat(parameters('factoryName'), '/HTTP_REQ_API')]",
+      "type": "Microsoft.DataFactory/factories/datasets",
+      "apiVersion": "2018-06-01",
+      "properties": {
+        "linkedServiceName": {
+          "referenceName": "[parameters('HTTP_REQ')]",
+          "type": "LinkedServiceReference"
+        },
+        "parameters": { "city_name": { "type": "string" } },
+        "annotations": [],
+        "type": "Json",
+        "typeProperties": {
+          "location": {
+            "type": "HttpServerLocation",
+            "relativeUrl": {
+              "value": "data/2.5/forecast?q=@{dataset().city_name}&APPID=API_KEY_HERE",
+              "type": "Expression"
+            }
+          }
+        },
+        "schema": {}
+      },
+      "dependsOn": []
+    },
+    {
+      "name": "[concat(parameters('factoryName'), '/API_TO_AZ_DATALKE')]",
+      "type": "Microsoft.DataFactory/factories/datasets",
+      "apiVersion": "2018-06-01",
+      "properties": {
+        "linkedServiceName": {
+          "referenceName": "[parameters('SourceAZDataLake')]",
+          "type": "LinkedServiceReference"
+        },
+        "parameters": { "city_name": { "type": "string" } },
+        "annotations": [],
+        "type": "Json",
+        "typeProperties": {
+          "location": {
+            "type": "AzureBlobFSLocation",
+            "fileName": {
+              "value": "@{dataset().city_name}.json",
+              "type": "Expression"
+            },
+            "folderPath": "bronze",
+            "fileSystem": "weather"
+          }
+        },
+        "schema": {}
+      },
+      "dependsOn": []
+    },
+    {
+      "name": "[concat(parameters('factoryName'), '/DataTransformation')]",
+      "type": "Microsoft.DataFactory/factories/dataflows",
+      "apiVersion": "2018-06-01",
+      "properties": {
+        "type": "MappingDataFlow",
+        "typeProperties": {
+          "sources": [
+            {
+              "dataset": {
+                "referenceName": "DataSet",
+                "type": "DatasetReference"
+              },
+              "name": "FileSource",
+              "description": "Sources of JSON File in Azure DataLake"
+            }
+          ],
+          "sinks": [
+            {
+              "dataset": {
+                "referenceName": "AzureSqlTable1",
+                "type": "DatasetReference"
+              },
+              "name": "StoreInDB",
+              "description": "Store the transformed data in Azure DB"
+            }
+          ],
+          "transformations": [
+            { "name": "SelectReqCols" },
+            { "name": "GetReqData" },
+            { "name": "select1" }
+          ],
+          "scriptLines": [
+            "source(output(",
+            "          cod as string,",
+            "          message as integer,",
+            "          cnt as integer,",
+            "          list as (dt as integer, main as (temp as double, feels_like as double, temp_min as double, temp_max as double, pressure as integer, sea_level as integer, grnd_level as integer, humidity as integer, temp_kf as double), weather as (id as integer, main as string, description as string, icon as string)[], clouds as (all as integer), wind as (speed as double, deg as integer, gust as double), visibility as integer, pop as integer, sys as (pod as string), dt_txt as string)[],",
+            "          city as (id as integer, name as string, coord as (lat as double, lon as double), country as string, population as integer, timezone as integer, sunrise as integer, sunset as integer)",
+            "     ),",
+            "     allowSchemaDrift: true,",
+            "     validateSchema: false,",
+            "     ignoreNoFilesFound: false,",
+            "     documentForm: 'documentPerLine') ~> FileSource",
+            "FileSource select(mapColumn(",
+            "          list,",
+            "          city",
+            "     ),",
+            "     skipDuplicateMapInputs: true,",
+            "     skipDuplicateMapOutputs: true) ~> SelectReqCols",
+            "SelectReqCols derive(city = city.name,",
+            "          temperature = list[1].main.temp - 273.15,",
+            "          humidity = list[1].main.humidity,",
+            "          pressure = list[1].main.pressure) ~> GetReqData",
+            "GetReqData select(mapColumn(",
+            "          city,",
+            "          temperature,",
+            "          humidity = list[1].main.humidity,",
+            "          pressure",
+            "     ),",
+            "     skipDuplicateMapInputs: true,",
+            "     skipDuplicateMapOutputs: true) ~> select1",
+            "select1 sink(allowSchemaDrift: true,",
+            "     validateSchema: false,",
+            "     input(",
+            "          Id as integer,",
+            "          City as string,",
+            "          Temperature as double,",
+            "          Humidity as integer,",
+            "          Pressure as integer,",
+            "          RecordedAt as timestamp",
+            "     ),",
+            "     deletable:false,",
+            "     insertable:true,",
+            "     updateable:false,",
+            "     upsertable:false,",
+            "     format: 'table',",
+            "     skipDuplicateMapInputs: true,",
+            "     skipDuplicateMapOutputs: true,",
+            "     errorHandlingOption: 'stopOnFirstError',",
+            "     mapColumn(",
+            "          City = city,",
+            "          Temperature = temperature,",
+            "          Pressure = pressure,",
+            "          Humidity = humidity",
+            "     )) ~> StoreInDB"
+          ]
+        }
+      },
+      "dependsOn": [
+        "[concat(variables('factoryId'), '/datasets/DataSet')]",
+        "[concat(variables('factoryId'), '/datasets/AzureSqlTable1')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('factoryName'), '/DataSet')]",
+      "type": "Microsoft.DataFactory/factories/datasets",
+      "apiVersion": "2018-06-01",
+      "properties": {
+        "linkedServiceName": {
+          "referenceName": "[parameters('SourceAZDataLake')]",
+          "type": "LinkedServiceReference"
+        },
+        "parameters": { "city": { "type": "string" } },
+        "annotations": [],
+        "type": "Json",
+        "typeProperties": {
+          "location": {
+            "type": "AzureBlobFSLocation",
+            "fileName": {
+              "value": "@{dataset().city}.json",
+              "type": "Expression"
+            },
+            "folderPath": "bronze",
+            "fileSystem": "weather"
+          }
+        },
+        "schema": {
+          "type": "object",
+          "properties": {
+            "cod": { "type": "string" },
+            "message": { "type": "integer" },
+            "cnt": { "type": "integer" },
+            "list": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "dt": { "type": "integer" },
+                  "main": {
+                    "type": "object",
+                    "properties": {
+                      "temp": { "type": "number" },
+                      "feels_like": { "type": "number" },
+                      "temp_min": { "type": "number" },
+                      "temp_max": { "type": "number" },
+                      "pressure": { "type": "integer" },
+                      "sea_level": { "type": "integer" },
+                      "grnd_level": { "type": "integer" },
+                      "humidity": { "type": "integer" },
+                      "temp_kf": { "type": "number" }
+                    }
+                  },
+                  "weather": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "integer" },
+                        "main": { "type": "string" },
+                        "description": { "type": "string" },
+                        "icon": { "type": "string" }
+                      }
+                    }
+                  },
+                  "clouds": {
+                    "type": "object",
+                    "properties": { "all": { "type": "integer" } }
+                  },
+                  "wind": {
+                    "type": "object",
+                    "properties": {
+                      "speed": { "type": "number" },
+                      "deg": { "type": "integer" },
+                      "gust": { "type": "number" }
+                    }
+                  },
+                  "visibility": { "type": "integer" },
+                  "pop": { "type": "integer" },
+                  "sys": {
+                    "type": "object",
+                    "properties": { "pod": { "type": "string" } }
+                  },
+                  "dt_txt": { "type": "string" }
+                }
+              }
+            },
+            "city": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "coord": {
+                  "type": "object",
+                  "properties": {
+                    "lat": { "type": "number" },
+                    "lon": { "type": "number" }
+                  }
+                },
+                "country": { "type": "string" },
+                "population": { "type": "integer" },
+                "timezone": { "type": "integer" },
+                "sunrise": { "type": "integer" },
+                "sunset": { "type": "integer" }
+              }
+            }
+          }
+        }
+      },
+      "dependsOn": []
+    },
+    {
+      "name": "[concat(parameters('factoryName'), '/AzureSqlTable1')]",
+      "type": "Microsoft.DataFactory/factories/datasets",
+      "apiVersion": "2018-06-01",
+      "properties": {
+        "linkedServiceName": {
+          "referenceName": "[parameters('AzureSqlDatabase1')]",
+          "type": "LinkedServiceReference"
+        },
+        "annotations": [],
+        "type": "AzureSqlTable",
+        "schema": [
+          { "name": "Id", "type": "int", "precision": 10 },
+          { "name": "City", "type": "nvarchar" },
+          { "name": "Temperature", "type": "float", "precision": 15 },
+          { "name": "Humidity", "type": "int", "precision": 10 },
+          { "name": "Pressure", "type": "int", "precision": 10 },
+          {
+            "name": "RecordedAt",
+            "type": "datetime",
+            "precision": 23,
+            "scale": 3
+          }
+        ],
+        "typeProperties": { "schema": "dbo", "table": "WeatherData" }
+      },
+      "dependsOn": []
+    }
+  ]
+}
