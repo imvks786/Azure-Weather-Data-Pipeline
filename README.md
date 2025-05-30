@@ -10,6 +10,9 @@ A fully automated Azure Data Factory pipeline to ingest, transform, and store we
 # Success Email
 ![success-email-sample](https://github.com/user-attachments/assets/52453b54-bc2c-434b-a290-5d672966afee)
 
+# Power BI Dashboard
+![image](https://github.com/user-attachments/assets/d7123946-9004-4cd6-8191-2881e1fb946e)
+
 - Designed and implemented a fully automated weather data ingestion pipeline using Azure Data Factory, integrating external APIs with Azure Data Lake and Azure SQL Database.
 - Developed dynamic pipelines to fetch weather data for multiple cities from OpenWeather API using JSON configuration and ForEach loops.
 - Utilized Copy Activity to extract raw JSON responses and stored them in a city-wise folder structure on Azure Data Lake for traceability and auditing.
